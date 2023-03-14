@@ -52,46 +52,52 @@ resource "aws_dynamodb_table" "subscribers" {
   }
 }
 
-# Define the IAM policy for the Lambda function to access S3 and SES.
-resource "aws_iam_policy" "newsletter_policy" {
-  name = "food-explorer-newsletter-policy"
+# Define the IAM Assume Role policy document
+data "aws_iam_policy_document" "assume_role" {
+  statement {
+    effect = "Allow"
 
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect   = "Allow"
-        Action   = ["s3:*"]
-        Resource = "${aws_s3_bucket.newsletter_bucket.arn}/*"
-      },
-      {
-        Effect   = "Allow"
-        Action   = ["ses:SendEmail", "ses:SendRawEmail"]
-        Resource = "*"
-      }
-    ]
-  })
+    principals {
+      type = "Service"
+      identifiers = ["lambda.amazonaws.com"]
+    }
+
+    actions = ["sts:AssumeRole"]
+  }
 }
 
 # Define the IAM role for the Lambda function to use the policy.
 resource "aws_iam_role" "newsletter_role" {
   name = "food-explorer-newsletter-role"
+  assume_role_policy = data.aws_iam_policy_document.assume_role
+}
 
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "lambda.amazonaws.com"
-        }
-      }
-    ]
-  })
+# Define the IAM policy for the Lambda function to access S3 and SES.
+data "aws_iam_policy_document" "newsletter_policy_document" {
 
-  # Attach the policy to the role.
-  policy = aws_iam_policy.newsletter_policy.arn
+  statement {
+    effect = "Allow"
+    actions = ["ses:SendEmail", "ses:SendRawEmail"]
+    resources = ["*"]
+  }
+
+  statement {
+    effect = "Allow"
+    actions = ["s3:*"]
+    resources = ["${aws_s3_bucket.newsletter_bucket.arn}/*"]
+  }
+
+}
+
+resource "aws_iam_policy" "newsletter_policy" {
+  name = "food-explorer-newsletter-policy"
+  description = "The Food Explorer Newsletter Policy"
+  policy = data.aws_iam_policy_document.newsletter_policy_document
+}
+
+resource "aws_iam_role_policy_attachment" "newsletter_role" {
+  role       = aws_iam_role.newsletter_role.name
+  policy_arn = aws_iam_policy.newsletter_policy.arn
 }
 
 # Define the Lambda function for sending newsletters.
@@ -144,13 +150,13 @@ resource "aws_sqs_queue" "newsletter_queue" {
 
   # Define the subscription to the SNS topic.
   depends_on = [aws_sns_topic.newsletter_topic]
-  dynamic "subscription" {
-    for_each = var.email_subscribers
-    content {
-      protocol = "email"
-      endpoint = subscription.value
-    }
-  }
+  # dynamic "subscription" {
+  #   for_each = var.email_subscribers
+  #   content {
+  #     protocol = "email"
+  #     endpoint = subscription.value
+  #   }
+  # }
 }
 
 # Define the Lambda function trigger for the SQS queue.
