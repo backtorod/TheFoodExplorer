@@ -1,5 +1,7 @@
+import base64
 import boto3
 import json
+import os
 import random
 import requests
 
@@ -7,18 +9,42 @@ sns = boto3.client('sns')
 ses = boto3.client('ses')
 s3 = boto3.resource('s3')
 
+def assume_role(arn):
+    sts_client = boto3.client("sts")
+    response = sts_client.assume_role(RoleArn=arn, RoleSessionName="AssumeRoleSession")
+    return boto3.Session(
+        aws_access_key_id=response["Credentials"]["AccessKeyId"],
+        aws_secret_access_key=response["Credentials"]["SecretAccessKey"],
+        aws_session_token=response["Credentials"]["SessionToken"],
+    )
+
+def get_secret(secret_name):
+    assume_role_arn = os.environ['ASSUME_ROLE_ARN']
+    region_name = os.environ['REGION']
+    session = assume_role(assume_role_arn)
+    secrets_client = session.client(service_name='secretsmanager', region_name=region_name)
+    get_secret_value_response = secrets_client.get_secret_value(SecretId=secret_name)
+    if 'SecretString' in get_secret_value_response:
+        secret = get_secret_value_response['SecretString']
+    else:
+        secret = base64.b64decode(get_secret_value_response['SecretBinary'])
+    return json.loads(secret)
+
+
 def get_random_region():
     regions = ['Asia', 'Europe', 'Africa', 'North America', 'South America', 'Oceania']
     return random.choice(regions)
 
 def get_random_cuisine(region):
-    url = f'https://api.spoonacular.com/recipes/random?apiKey=<YOUR_API_KEY>&number=1&tags={region},main course'
+    api_key = get_secret("YOUR_API_KEY")["api_key"]
+    url = f'https://api.spoonacular.com/recipes/random?apiKey={api_key}&number=1&tags={region},main course'
     response = requests.get(url)
     data = response.json()
     return data['recipes'][0]['cuisine']
 
 def get_random_recipe(cuisine):
-    url = f'https://api.spoonacular.com/recipes/random?apiKey=<YOUR_API_KEY>&number=1&cuisine={cuisine}'
+    api_key = get_secret("YOUR_API_KEY")["api_key"]
+    url = f'https://api.spoonacular.com/recipes/random?apiKey={api_key}&number=1&cuisine={cuisine}'
     response = requests.get(url)
     data = response.json()
     return data['recipes'][0]
