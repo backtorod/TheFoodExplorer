@@ -1,3 +1,3 @@
 bucket = "thefoodexplorer-state"
-key    = "thefoodexplorer/develop/terraform.tfstate"
+key    = "thefoodexplorer/production/terraform.tfstate"
 region = "ca-central-1"
