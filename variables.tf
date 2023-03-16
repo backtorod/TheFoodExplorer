@@ -28,6 +28,12 @@ variable "subscribers_table_name" {
   default = "the-food-explorer-subscribers"
 }
 
+# Define variables for the Environment.
+variable "environment" {
+  type    = string
+  default = "non_production"  
+}
+
 # Define variables for the email sender.
 variable "source_email_address" {
   type    = string

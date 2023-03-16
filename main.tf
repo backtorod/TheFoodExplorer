@@ -4,7 +4,7 @@ terraform {
 }
 
 provider "aws" {
-  region = var.region
+  region = var.aws_primary_region
 }
 
 module "providers" {
@@ -32,7 +32,7 @@ module "s3" {
 module "lambda_generate_newsletter" {
   source = "./lambda_generate_newsletter"
 
-  region       = var.region
+  region       = var.aws_primary_region
   source_email = var.source_email
 
   subscribers_table_name = module.dynamodb.subscribers_table_name
@@ -41,14 +41,14 @@ module "lambda_generate_newsletter" {
 module "lambda_subscribe" {
   source = "./lambda_subscribe"
 
-  region                  = var.region
-  subscribers_table_name  = module.dynamodb.subscribers_table_name
+  region                 = var.aws_primary_region
+  subscribers_table_name = module.dynamodb.subscribers_table_name
 }
 
 module "apigateway" {
   source = "./apigateway"
 
-  environment               = var.environment
+  environment                = var.environment
   generate_newsletter_lambda = module.lambda_generate_newsletter.generate_newsletter_lambda
-  subscribe_lambda          = module.lambda_subscribe.subscribe_lambda
+  subscribe_lambda           = module.lambda_subscribe.subscribe_lambda
 }

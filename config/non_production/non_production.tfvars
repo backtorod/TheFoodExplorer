@@ -1,5 +1,6 @@
 aws_primary_region     = "ca-central-1"
 aws_secondary_region   = "us-west-1"
+environment            = "non_production"
 s3_bucket_name         = "thefoodexplorer-data"
 s3_bucket_name_state   = "thefoodexplorer-state"
 subscribers_table_name = "the-food-explorer-subscribers"
